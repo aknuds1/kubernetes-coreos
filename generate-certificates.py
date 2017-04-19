@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import subprocess
 import os.path
 import argparse
 
@@ -13,13 +12,6 @@ CONF = {
         '138.68.109.60'
     ],
 }
-
-
-def _run_command(cmd, env=None):
-    try:
-        subprocess.check_call(cmd, env=env)
-    except subprocess.CalledProcessError:
-        error('Command failed: {}'.format(' '.join(cmd)))
 
 
 cl_parser = argparse.ArgumentParser(
@@ -46,8 +38,8 @@ os.chdir(args.output)
 
 if not os.path.exists('ca-key.pem') or force:
     info('Generating cluster root CA')
-    _run_command(['openssl', 'genrsa', '-out', 'ca-key.pem', '2048', ])
-    _run_command([
+    run_command(['openssl', 'genrsa', '-out', 'ca-key.pem', '2048', ])
+    run_command([
         'openssl', 'req', '-x509', '-new', '-nodes', '-key', 'ca-key.pem',
         '-days', '10000', '-out', 'ca.pem', '-subj', '/CN=kube-ca'
     ])
@@ -73,15 +65,15 @@ DNS.4 = kubernetes.default.svc.cluster.local
 IP.1 = 10.3.0.1
 IP.2 = {c[masterIp]}
 """.format(c=CONF))
-    _run_command([
+    run_command([
         'openssl', 'genrsa', '-out', 'apiserver-key.pem', '2048',
     ])
-    _run_command([
+    run_command([
         'openssl', 'req', '-new', '-key', 'apiserver-key.pem', '-out',
         'apiserver.csr', '-subj', '/CN=kube-apiserver', '-config',
         'openssl.cnf',
     ])
-    _run_command([
+    run_command([
         'openssl', 'x509', '-req', '-in', 'apiserver.csr', '-CA', 'ca.pem',
         '-CAkey', 'ca-key.pem', '-CAcreateserial', '-out', 'apiserver.pem',
         '-days', '365', '-extensions', 'v3_req', '-extfile', 'openssl.cnf',
@@ -106,16 +98,16 @@ for worker in range(0, 2):
     worker_name = 'worker{}'.format(worker + 1)
     if not os.path.exists('{}-key.pem'.format(worker_name)) or force:
         info('Generating worker {} key pair'.format(worker + 1))
-        _run_command([
+        run_command([
             'openssl', 'genrsa', '-out', '{}-key.pem'.format(worker_name),
             '2048',
         ])
-        _run_command([
+        run_command([
             'openssl', 'req', '-new', '-key', '{}-key.pem'.format(worker_name),
             '-out', '{}.csr'.format(worker_name), '-subj',
             '/CN={}'.format(worker_name), '-config', 'worker-openssl.cnf',
         ], env={'WORKER_IP': CONF['workerIps'][worker], })
-        _run_command([
+        run_command([
             'openssl', 'x509', '-req', '-in', '{}.csr'.format(worker_name),
             '-CA', 'ca.pem', '-CAkey', 'ca-key.pem', '-CAcreateserial', '-out',
             '{}.pem'.format(worker_name), '-days', '365', '-extensions',
