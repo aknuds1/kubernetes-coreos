@@ -53,9 +53,6 @@ def _create_instance(name, ignite_config, volume=None):
         info('Creating instance {}'.format(full_name))
 
         if ignite_config:
-            with open('test.ign', 'wt') as f:
-                f.write(
-                    yaml.dump(ignite_config, default_flow_style=False) + '\n')
             with tempfile.NamedTemporaryFile(mode='wt') as f:
                 f.write(yaml.dump(ignite_config, default_flow_style=False))
                 f.flush()
@@ -63,7 +60,7 @@ def _create_instance(name, ignite_config, volume=None):
                     'ct', '-in-file', f.name, '-platform', 'digitalocean',
                     '-strict',
                 ]).decode()
-                ignite_config_raw = ignite_config_raw.replace('"', '\\')
+                ignite_config_raw = ignite_config_raw
         else:
             ignite_config_raw = None
 
@@ -105,7 +102,7 @@ for i in range(2):
         volumes.append(volume)
 
 
-_num_masters = 1
+_num_masters = 2
 _num_existing_masters = len([
     i for i in range(_num_masters) if
     '{}-master{}'.format(args.cluster_name, i + 1) in _existing_instances
