@@ -5,18 +5,11 @@ import argparse
 from _common import *
 
 
-CONF = {
-    'masterIp': '207.154.214.117',
-    'workerIps': [
-        '207.154.234.17',
-        '138.68.109.60'
-    ],
-}
-
-
 cl_parser = argparse.ArgumentParser(
     description='Generate Kubernetes cluster certificates'
 )
+cl_parser.add_argument('master_ip', help='Specify master IP')
+cl_parser.add_argument('worker_ips', help='Specify worker IPs')
 cl_parser.add_argument(
     '-o', '--output', help='Specify output directory',
     default='.',
@@ -28,6 +21,10 @@ cl_parser.add_argument(
 args = cl_parser.parse_args()
 force = args.force
 
+CONF = {
+    'masterIp': args.master_ip,
+    'workerIps': [x.strip() for x in args.worker_ips.split(',')],
+}
 
 info('Generating cluster certificates...')
 if not os.path.exists(args.output):
@@ -115,5 +112,22 @@ for worker in range(0, 2):
         ], env={'WORKER_IP': CONF['workerIps'][worker], })
     else:
         info('Reusing worker {} key pair'.format(worker + 1))
+
+if not os.path.exists('admin-key.pem'):
+    info('Generating admin key pair')
+    run_command([
+        'openssl', 'genrsa', '-out', 'admin-key.pem', '2048',
+    ])
+    run_command([
+        'openssl', 'req', '-new', '-key', 'admin-key.pem', '-out', 'admin.csr',
+        '-subj', '/CN=kube-admin',
+    ])
+    run_command([
+        'openssl', 'x509', '-req', '-in', 'admin.csr', '-CA', 'ca.pem',
+        '-CAkey', 'ca-key.pem', '-CAcreateserial', '-out', 'admin.pem',
+        '-days', '365',
+    ])
+else:
+    info('Re-using admin key pair')
 
 info('Success!')
